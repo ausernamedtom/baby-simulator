@@ -8,6 +8,14 @@
 </head>
 <body>
     <div class="game-container">
+        <div id="startScreen" class="screen">
+            <h1>Welcome to the Game</h1>
+            <div class="input-container">
+                <label for="playerName">Enter your character's name:</label>
+                <input type="text" id="playerName" maxlength="20" placeholder="Your name">
+                <button id="startButton">Start Game</button>
+            </div>
+        </div>
         <canvas id="gameCanvas"></canvas>
     </div>
     <script src="game.js"></script>

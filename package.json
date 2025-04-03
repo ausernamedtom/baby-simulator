@@ -1,0 +1,18 @@
+{
+  "name": "baby-simulator",
+  "version": "1.0.0",
+  "description": "A 2D web game",
+  "main": "game.js",
+  "scripts": {
+    "build": "npm run minify",
+    "minify": "minify game.js -o game.min.js && minify style.css -o style.min.css",
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down"
+  },
+  "dependencies": {
+    "minify": "^7.1.0"
+  },
+  "devDependencies": {
+    "minify-cli": "^1.0.0"
+  }
+} 
