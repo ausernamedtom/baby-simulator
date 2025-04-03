@@ -11,6 +11,21 @@ class Game {
         
         this.gameStarted = false;
         
+        this.warningMessage = null;
+        this.warningTimeout = null;
+        this.warningOpacity = 0;
+        this.warningFadeStartTime = 0;
+        this.warningFadeDuration = 2000; // 2 seconds fade duration
+        
+        // Control hint properties
+        this.showControlHint = false;
+        this.controlHintOpacity = 0;
+        this.controlHintFadeInDuration = 500; // 0.5 seconds fade in
+        this.controlHintFadeOutDuration = 500; // 0.5 seconds fade out
+        this.controlHintFadeStartTime = 0;
+        this.controlHintFadeDirection = 'in'; // 'in' or 'out'
+        this.controlHintTimeout = null;
+        
         // Define rooms first so we can reference them for baby position
         this.rooms = {
             bedroom: { 
@@ -76,7 +91,8 @@ class Game {
             width: 60,
             height: 60,
             name: '',
-            isSleeping: true
+            isSleeping: true,
+            currentFurniture: 'bed'  // Track which furniture the baby is in
         };
 
         this.parent = {
@@ -85,7 +101,8 @@ class Game {
             width: 40,
             height: 80,
             speed: 5,
-            name: 'Parent'
+            name: 'Parent',
+            isHoldingBaby: false
         };
         
         this.keys = {};
@@ -96,6 +113,11 @@ class Game {
     setupEventListeners() {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key] = true;
+            
+            // Prevent spacebar from scrolling the page
+            if (e.key === ' ') {
+                e.preventDefault();
+            }
         });
         
         window.addEventListener('keyup', (e) => {
@@ -374,16 +396,24 @@ class Game {
         ctx.strokeStyle = '#4A4A4A';
         ctx.lineWidth = 3;
         
-        // Closed eyes
-        ctx.beginPath();
-        ctx.moveTo(x + width/3, y + height/2 - 5);
-        ctx.quadraticCurveTo(x + width/3 + 5, y + height/2 - 8, x + width/3 + 10, y + height/2 - 5);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x + width*2/3 - 10, y + height/2 - 5);
-        ctx.quadraticCurveTo(x + width*2/3 - 5, y + height/2 - 8, x + width*2/3, y + height/2 - 5);
-        ctx.stroke();
+        // Eyes (closed if sleeping, open if awake)
+        if (this.baby.isSleeping) {
+            ctx.beginPath();
+            ctx.moveTo(x + width/3, y + height/2 - 5);
+            ctx.quadraticCurveTo(x + width/3 + 5, y + height/2 - 8, x + width/3 + 10, y + height/2 - 5);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x + width*2/3 - 10, y + height/2 - 5);
+            ctx.quadraticCurveTo(x + width*2/3 - 5, y + height/2 - 8, x + width*2/3, y + height/2 - 5);
+            ctx.stroke();
+        } else {
+            // Open eyes
+            ctx.beginPath();
+            ctx.arc(x + width/3 + 5, y + height/2 - 5, 2, 0, Math.PI * 2);
+            ctx.arc(x + width*2/3 - 5, y + height/2 - 5, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
         
         // Rosy cheeks
         ctx.fillStyle = '#FFB6C1';
@@ -399,11 +429,13 @@ class Game {
         ctx.arc(x + width/2, y + height/2, 10, 0.1 * Math.PI, 0.9 * Math.PI);
         ctx.stroke();
         
-        // ZZZ sleep indicator
-        ctx.fillStyle = '#9575CD';
-        ctx.font = 'bold 20px "Comic Sans MS", cursive';
-        for (let i = 0; i < 3; i++) {
-            ctx.fillText('z', x + width + 5 + (i * 5), y - 5 - (i * 10));
+        // ZZZ sleep indicator (only when sleeping)
+        if (this.baby.isSleeping) {
+            ctx.fillStyle = '#9575CD';
+            ctx.font = 'bold 20px "Comic Sans MS", cursive';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillText('z', x + width + 5 + (i * 5), y - 5 - (i * 10));
+            }
         }
     }
     
@@ -440,14 +472,105 @@ class Game {
         ctx.arc(x + width/2 + 5, y - 15, 2, 0, Math.PI * 2);
         ctx.stroke();
         
-        // Smile
-        ctx.beginPath();
-        ctx.arc(x + width/2, y - 10, 5, 0, Math.PI);
-        ctx.stroke();
+        // Expression (smile when holding baby, neutral otherwise)
+        if (this.parent.isHoldingBaby) {
+            ctx.beginPath();
+            ctx.arc(x + width/2, y - 10, 5, 0, Math.PI);
+            ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(x + width/2 - 5, y - 10);
+            ctx.lineTo(x + width/2 + 5, y - 10);
+            ctx.stroke();
+        }
     }
     
+    checkCollision(rect1, rect2) {
+        return rect1.x < rect2.x + rect2.width &&
+               rect1.x + rect1.width > rect2.x &&
+               rect1.y < rect2.y + rect2.height &&
+               rect1.y + rect1.height > rect2.y;
+    }
+    
+    checkFurnitureCollision() {
+        // Check all rooms for furniture collisions
+        for (const room of Object.values(this.rooms)) {
+            for (const furniture of room.furniture) {
+                // Create a collision box for the baby's position
+                const babyCollisionBox = {
+                    x: this.baby.x,
+                    y: this.baby.y,
+                    width: this.baby.width,
+                    height: this.baby.height
+                };
+                
+                if (this.checkCollision(babyCollisionBox, furniture)) {
+                    return furniture;
+                }
+            }
+        }
+        return null;
+    }
+
+    canInteractWithFurniture(furniture) {
+        // Define which furniture types can hold the baby
+        const interactableFurniture = ['bed', 'crib', 'sofa'];
+        
+        // Define dangerous furniture
+        const dangerousFurniture = ['fridge', 'stove'];
+        
+        // Show warning if trying to place baby in dangerous furniture
+        if (dangerousFurniture.includes(furniture.type)) {
+            this.showWarning(`Don't put the baby in the ${furniture.type}!`);
+            return false;
+        }
+        
+        return interactableFurniture.includes(furniture.type);
+    }
+
+    placeBabyInFurniture(furniture) {
+        // Center the baby in the furniture
+        this.baby.x = furniture.x + furniture.width/2 - this.baby.width/2;
+        this.baby.y = furniture.y + furniture.height/2 - this.baby.height/2;
+        this.baby.currentFurniture = furniture.type;
+        
+        // Make the baby sleep in bed or crib
+        if (furniture.type === 'bed' || furniture.type === 'crib') {
+            this.baby.isSleeping = true;
+        }
+    }
+
     update() {
         if (!this.gameStarted) return;
+        
+        // Update warning opacity for fade effect
+        if (this.warningMessage) {
+            const elapsedTime = Date.now() - this.warningFadeStartTime;
+            if (elapsedTime < this.warningFadeDuration) {
+                this.warningOpacity = 1.0 - (elapsedTime / this.warningFadeDuration);
+            } else {
+                this.warningOpacity = 0;
+            }
+        }
+        
+        // Update control hint opacity
+        if (this.showControlHint) {
+            const elapsedTime = Date.now() - this.controlHintFadeStartTime;
+            if (this.controlHintFadeDirection === 'in') {
+                if (elapsedTime < this.controlHintFadeInDuration) {
+                    this.controlHintOpacity = elapsedTime / this.controlHintFadeInDuration;
+                } else {
+                    this.controlHintOpacity = 1.0;
+                }
+            } else { // fade out
+                if (elapsedTime < this.controlHintFadeOutDuration) {
+                    this.controlHintOpacity = 1.0 - (elapsedTime / this.controlHintFadeOutDuration);
+                } else {
+                    this.controlHintOpacity = 0;
+                    this.showControlHint = false;
+                }
+            }
+        }
         
         // Parent movement
         if (this.keys['ArrowLeft'] || this.keys['a']) {
@@ -462,6 +585,112 @@ class Game {
         if (this.keys['ArrowDown'] || this.keys['s']) {
             this.parent.y = Math.min(this.canvas.height - this.parent.height, this.parent.y + this.parent.speed);
         }
+
+        // Check for collision with baby and handle pickup
+        if (!this.parent.isHoldingBaby && this.checkCollision(this.parent, this.baby)) {
+            this.parent.isHoldingBaby = true;
+            this.baby.isSleeping = false;
+            this.baby.currentFurniture = null;
+        }
+
+        // Update baby position if being held
+        if (this.parent.isHoldingBaby) {
+            this.baby.x = this.parent.x + this.parent.width/2 - this.baby.width/2;
+            this.baby.y = this.parent.y - this.baby.height;
+            
+            // Check for nearby interactable furniture
+            const nearbyFurniture = this.checkFurnitureCollision();
+            if (nearbyFurniture && this.canInteractWithFurniture(nearbyFurniture)) {
+                // Show control hint
+                if (!this.showControlHint) {
+                    this.showControlHint = true;
+                    this.controlHintOpacity = 0;
+                    this.controlHintFadeDirection = 'in';
+                    this.controlHintFadeStartTime = Date.now();
+                    
+                    // Clear existing timeout if there is one
+                    if (this.controlHintTimeout) {
+                        clearTimeout(this.controlHintTimeout);
+                    }
+                }
+            } else {
+                // Hide control hint
+                if (this.showControlHint) {
+                    this.controlHintFadeDirection = 'out';
+                    this.controlHintFadeStartTime = Date.now();
+                    
+                    // Clear existing timeout if there is one
+                    if (this.controlHintTimeout) {
+                        clearTimeout(this.controlHintTimeout);
+                    }
+                    
+                    // Set timeout to hide hint after fade out
+                    this.controlHintTimeout = setTimeout(() => {
+                        this.showControlHint = false;
+                    }, this.controlHintFadeOutDuration);
+                }
+            }
+        }
+
+        // Handle baby placement with spacebar
+        if (this.keys[' '] && this.parent.isHoldingBaby) {
+            // Temporarily position the baby at the parent's position for collision detection
+            const originalBabyX = this.baby.x;
+            const originalBabyY = this.baby.y;
+            
+            // Position baby at parent's position for collision detection
+            this.baby.x = this.parent.x + this.parent.width/2 - this.baby.width/2;
+            this.baby.y = this.parent.y - this.baby.height;
+            
+            const nearbyFurniture = this.checkFurnitureCollision();
+            
+            // Restore original baby position
+            this.baby.x = originalBabyX;
+            this.baby.y = originalBabyY;
+            
+            if (nearbyFurniture) {
+                // Check if it's dangerous furniture
+                if (this.canInteractWithFurniture(nearbyFurniture)) {
+                    this.placeBabyInFurniture(nearbyFurniture);
+                    this.parent.isHoldingBaby = false;
+                    
+                    // Hide control hint
+                    this.controlHintFadeDirection = 'out';
+                    this.controlHintFadeStartTime = Date.now();
+                    
+                    // Clear existing timeout if there is one
+                    if (this.controlHintTimeout) {
+                        clearTimeout(this.controlHintTimeout);
+                    }
+                    
+                    // Set timeout to hide hint after fade out
+                    this.controlHintTimeout = setTimeout(() => {
+                        this.showControlHint = false;
+                    }, this.controlHintFadeOutDuration);
+                }
+                // If it's dangerous furniture, the warning is shown in canInteractWithFurniture
+                // and we keep holding the baby
+            } else {
+                // If no furniture nearby, just put the baby down
+                this.parent.isHoldingBaby = false;
+                this.baby.currentFurniture = null;
+                this.baby.isSleeping = false;
+                
+                // Hide control hint
+                this.controlHintFadeDirection = 'out';
+                this.controlHintFadeStartTime = Date.now();
+                
+                // Clear existing timeout if there is one
+                if (this.controlHintTimeout) {
+                    clearTimeout(this.controlHintTimeout);
+                }
+                
+                // Set timeout to hide hint after fade out
+                this.controlHintTimeout = setTimeout(() => {
+                    this.showControlHint = false;
+                }, this.controlHintFadeOutDuration);
+            }
+        }
     }
     
     draw() {
@@ -472,11 +701,18 @@ class Game {
             // Draw rooms
             Object.values(this.rooms).forEach(room => this.drawRoom(room));
             
-            // Draw baby
-            this.drawSleepingBaby(this.baby.x, this.baby.y, this.baby.width, this.baby.height);
+            // Draw baby (only if not being held)
+            if (!this.parent.isHoldingBaby) {
+                this.drawSleepingBaby(this.baby.x, this.baby.y, this.baby.width, this.baby.height);
+            }
             
             // Draw parent
             this.drawParent(this.parent.x, this.parent.y, this.parent.width, this.parent.height);
+            
+            // Draw baby on top of parent if being held
+            if (this.parent.isHoldingBaby) {
+                this.drawSleepingBaby(this.baby.x, this.baby.y, this.baby.width, this.baby.height);
+            }
             
             // Draw names
             this.ctx.fillStyle = '#ffffff';
@@ -484,13 +720,92 @@ class Game {
             this.ctx.textAlign = 'center';
             this.ctx.fillText(this.baby.name, this.baby.x + this.baby.width / 2, this.baby.y - 10);
             this.ctx.fillText(this.parent.name, this.parent.x + this.parent.width / 2, this.parent.y - 30);
+            
+            // Draw warning message if exists
+            if (this.warningMessage) {
+                this.ctx.save();
+                
+                // Create a semi-transparent background for better readability
+                this.ctx.fillStyle = `rgba(0, 0, 0, ${0.5 * this.warningOpacity})`;
+                this.ctx.fillRect(
+                    this.canvas.width / 2 - 150, 
+                    20, 
+                    300, 
+                    40
+                );
+                
+                // Draw the warning text with fade effect
+                this.ctx.fillStyle = `rgba(255, 0, 0, ${this.warningOpacity})`;
+                this.ctx.font = 'bold 24px "Comic Sans MS", cursive';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(this.warningMessage, this.canvas.width / 2, 50);
+                
+                this.ctx.restore();
+            }
+            
+            // Draw control hint if active
+            if (this.showControlHint && this.parent.isHoldingBaby) {
+                this.drawControlHint();
+            }
         }
+    }
+    
+    drawControlHint() {
+        const ctx = this.ctx;
+        const centerX = this.parent.x + this.parent.width / 2;
+        const centerY = this.parent.y + this.parent.height / 2;
+        const radius = 50;
+        
+        // Draw outer circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.controlHintOpacity})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Draw inner circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius - 10, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.controlHintOpacity})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw spacebar icon
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.controlHintOpacity})`;
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('SPACE', centerX, centerY);
+        
+        // Draw action text
+        ctx.font = '16px Arial';
+        ctx.fillText('Place Baby', centerX, centerY + 30);
+        
+        ctx.restore();
     }
     
     gameLoop() {
         this.update();
         this.draw();
         requestAnimationFrame(() => this.gameLoop());
+    }
+
+    showWarning(message) {
+        this.warningMessage = message;
+        this.warningOpacity = 1.0; // Start fully visible
+        this.warningFadeStartTime = Date.now();
+        
+        // Clear existing timeout if there is one
+        if (this.warningTimeout) {
+            clearTimeout(this.warningTimeout);
+        }
+        
+        // Clear warning after fade duration
+        this.warningTimeout = setTimeout(() => {
+            this.warningMessage = null;
+            this.warningOpacity = 0;
+        }, this.warningFadeDuration);
     }
 }
 
