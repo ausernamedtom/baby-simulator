@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Web Game</title>
+    <title>Baby Simulator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="game-container">
         <div id="startScreen" class="screen">
-            <h1>Welcome to the Game</h1>
+            <div class="title-container">
+                <h1 class="game-title">Baby Simulator</h1>
+                <p class="subtitle">Your Virtual Parenting Adventure</p>
+            </div>
             <div class="input-container">
-                <label for="playerName">Enter your character's name:</label>
-                <input type="text" id="playerName" maxlength="20" placeholder="Your name">
-                <button id="startButton">Start Game</button>
+                <label for="playerName">Enter your baby's name:</label>
+                <input type="text" id="playerName" maxlength="20" placeholder="Baby's name">
+                <button id="startButton">Start Parenting</button>
             </div>
         </div>
         <canvas id="gameCanvas"></canvas>
