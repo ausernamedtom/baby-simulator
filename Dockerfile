@@ -5,9 +5,8 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies and build
-RUN npm install -g minify
-RUN minify game.js -o game.min.js
-RUN minify style.css -o style.min.css
+RUN npm install
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine

@@ -43,6 +43,18 @@ class Game {
         this.pickupHintFadeDirection = 'in'; // 'in' or 'out'
         this.pickupHintTimeout = null;
         
+        // Cooldown properties
+        this.placeCooldown = 150; // 150ms cooldown
+        this.pickupCooldown = 150; // 150ms cooldown
+        this.lastPickupTime = 0;
+        this.lastPlaceTime = 0;
+        this.showCooldownIndicator = false;
+        this.cooldownIndicatorOpacity = 0;
+        this.cooldownIndicatorFadeInDuration = 300;
+        this.cooldownIndicatorFadeOutDuration = 300;
+        this.cooldownIndicatorFadeStartTime = 0;
+        this.cooldownIndicatorFadeDirection = 'in';
+        
         // Define rooms first so we can reference them for baby position
         this.rooms = {
             bedroom: { 
@@ -628,6 +640,25 @@ class Game {
                 }
             }
         }
+
+        // Update cooldown indicator opacity
+        if (this.showCooldownIndicator) {
+            const elapsedTime = Date.now() - this.cooldownIndicatorFadeStartTime;
+            if (this.cooldownIndicatorFadeDirection === 'in') {
+                if (elapsedTime < this.cooldownIndicatorFadeInDuration) {
+                    this.cooldownIndicatorOpacity = elapsedTime / this.cooldownIndicatorFadeInDuration;
+                } else {
+                    this.cooldownIndicatorOpacity = 1.0;
+                }
+            } else { // fade out
+                if (elapsedTime < this.cooldownIndicatorFadeOutDuration) {
+                    this.cooldownIndicatorOpacity = 1.0 - (elapsedTime / this.cooldownIndicatorFadeOutDuration);
+                } else {
+                    this.cooldownIndicatorOpacity = 0;
+                    this.showCooldownIndicator = false;
+                }
+            }
+        }
         
         // Parent movement
         if (this.keys['ArrowLeft'] || this.keys['a']) {
@@ -656,14 +687,16 @@ class Game {
         const spacePressed = this.keys[' '];
         const isColliding = isCollidingWithBaby;
         const isHolding = this.parent.isHoldingBaby;
+        const canPickup = Date.now() - this.lastPlaceTime >= this.pickupCooldown;
+        const canPlace = Date.now() - this.lastPickupTime >= this.placeCooldown;
         
         if (spacePressed) {
             // If showing pickup hint and not holding baby, try to pick up
-            if (this.showPickupHint && !isHolding && isColliding) {
+            if (this.showPickupHint && !isHolding && isColliding && canPickup) {
                 this.parent.isHoldingBaby = true;
-                console.log('Picked up baby');
                 this.baby.isSleeping = false;
                 this.baby.currentFurniture = null;
+                this.lastPickupTime = Date.now();
                 
                 // Hide pickup hint immediately
                 this.showPickupHint = false;
@@ -675,10 +708,10 @@ class Game {
                 }
             }
             // If showing control hint and holding baby, try to place
-            else if (this.showControlHint && isHolding && nearbyFurniture && interactableFurniture.includes(nearbyFurniture.type)) {
+            else if (this.showControlHint && isHolding && nearbyFurniture && interactableFurniture.includes(nearbyFurniture.type) && canPlace) {
                 this.placeBabyInFurniture(nearbyFurniture);
                 this.parent.isHoldingBaby = false;
-                console.log('Placed baby in ' + nearbyFurniture.type);
+                this.lastPlaceTime = Date.now();
                 
                 // Hide control hint immediately
                 this.showControlHint = false;
@@ -960,6 +993,45 @@ class Game {
         });
     }
     
+    drawCooldownIndicator() {
+        const ctx = this.ctx;
+        const centerX = this.parent.x + this.parent.width / 2;
+        const centerY = this.parent.y - 50;
+        const radius = 20;
+        
+        ctx.save();
+        
+        // Draw semi-transparent background
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.6 * this.cooldownIndicatorOpacity})`;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw cooldown circle
+        const elapsedTime = Date.now() - this.lastPickupTime;
+        const progress = Math.min(1, elapsedTime / this.placeCooldown);
+        const startAngle = -Math.PI / 2;
+        const endAngle = startAngle + (progress * Math.PI * 2);
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.cooldownIndicatorOpacity})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Draw remaining time
+        const remainingTime = Math.ceil((this.placeCooldown - elapsedTime) / 1000);
+        if (remainingTime > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${this.cooldownIndicatorOpacity})`;
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(remainingTime.toString(), centerX, centerY);
+        }
+        
+        ctx.restore();
+    }
+    
     gameLoop() {
         this.update();
         this.draw();
@@ -996,29 +1068,13 @@ class Game {
     setupDevUI() {
         // Create dev mode indicator
         const devIndicator = document.createElement('div');
-        devIndicator.style.position = 'fixed';
-        devIndicator.style.top = '10px';
-        devIndicator.style.right = '10px';
-        devIndicator.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
-        devIndicator.style.color = 'white';
-        devIndicator.style.padding = '5px 10px';
-        devIndicator.style.borderRadius = '5px';
-        devIndicator.style.fontFamily = 'Arial, sans-serif';
-        devIndicator.style.zIndex = '1000';
+        devIndicator.className = 'fixed top-2.5 right-2.5 bg-red-500/70 text-white px-2.5 py-1.5 rounded font-sans z-50';
         devIndicator.textContent = 'DEV MODE';
         document.body.appendChild(devIndicator);
 
         // Create debug panel
         const debugPanel = document.createElement('div');
-        debugPanel.style.position = 'fixed';
-        debugPanel.style.bottom = '10px';
-        debugPanel.style.right = '10px';
-        debugPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        debugPanel.style.color = 'white';
-        debugPanel.style.padding = '10px';
-        debugPanel.style.borderRadius = '5px';
-        debugPanel.style.fontFamily = 'monospace';
-        debugPanel.style.zIndex = '1000';
+        debugPanel.className = 'fixed bottom-2.5 right-2.5 bg-black/80 text-white p-2.5 rounded font-mono z-50';
         debugPanel.id = 'debugPanel';
         document.body.appendChild(debugPanel);
     }

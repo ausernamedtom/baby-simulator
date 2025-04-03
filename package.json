@@ -4,15 +4,20 @@
   "description": "A 2D web game",
   "main": "game.js",
   "scripts": {
-    "build": "npm run minify",
+    "build": "npm run build:css && npm run minify",
+    "build:css": "tailwindcss -i ./src/input.css -o ./style.css",
     "minify": "minify game.js -o game.min.js && minify style.css -o style.min.css",
     "start": "docker-compose up -d",
-    "stop": "docker-compose down"
+    "stop": "docker-compose down",
+    "dev": "tailwindcss -i ./src/input.css -o ./style.css --watch"
   },
   "dependencies": {
     "minify": "^7.1.0"
   },
   "devDependencies": {
-    "minify-cli": "^1.0.0"
+    "autoprefixer": "^10.4.14",
+    "minify-cli": "^1.0.0",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2"
   }
 } 

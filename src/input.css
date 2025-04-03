@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
+  
+  body {
+    @apply flex justify-center items-center min-h-screen bg-game-bg font-sans;
+  }
+}
+
+@layer components {
+  .game-container {
+    @apply relative w-[800px] h-[600px] border-2 border-game-border rounded-lg overflow-hidden shadow-lg;
+  }
+
+  .screen {
+    @apply absolute inset-0 flex flex-col justify-center items-center bg-game-canvas/95 text-game-text z-10 transition-opacity duration-500 ease-in-out p-8;
+  }
+
+  .screen.hidden {
+    @apply opacity-0 pointer-events-none;
+  }
+
+  .title-container {
+    @apply text-center mb-12 animate-fade-in-down;
+  }
+
+  .game-title {
+    @apply text-5xl mb-4 text-game-blue font-bold tracking-wider drop-shadow-lg;
+  }
+
+  .subtitle {
+    @apply text-lg text-gray-400 tracking-wide drop-shadow;
+  }
+
+  .input-container {
+    @apply flex flex-col items-center gap-4 animate-fade-in-up;
+  }
+
+  .game-label {
+    @apply text-lg mb-2 text-game-blue;
+  }
+
+  .game-input {
+    @apply px-4 py-3 text-lg border-2 border-game-blue rounded bg-game-input-bg text-game-text w-[300px] text-center transition-all duration-300 ease-in-out;
+  }
+
+  .game-input:focus {
+    @apply outline-none border-[#2980b9] shadow-[0_0_10px_rgba(52,152,219,0.3)];
+  }
+
+  .game-input::placeholder {
+    @apply text-game-placeholder;
+  }
+
+  .game-button {
+    @apply px-8 py-4 text-lg bg-game-green text-white rounded cursor-pointer transition-all duration-300 ease-in-out uppercase tracking-wide font-bold;
+  }
+
+  .game-button:hover {
+    @apply bg-game-hover-green scale-105 shadow-[0_0_15px_rgba(39,174,96,0.4)];
+  }
+
+  .game-button:active {
+    @apply scale-95;
+  }
+} 

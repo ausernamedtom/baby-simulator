@@ -14,13 +14,13 @@
                 <p class="subtitle">Your Virtual Parenting Adventure</p>
             </div>
             <div class="input-container">
-                <label for="playerName">Enter your baby's name:</label>
-                <input type="text" id="playerName" maxlength="20" placeholder="Baby's name">
-                <button id="startButton">Start Parenting</button>
-                <button id="stopButton">Stop Game</button>
+                <label for="playerName" class="game-label">Enter your baby's name:</label>
+                <input type="text" id="playerName" maxlength="20" placeholder="Baby's name" class="game-input">
+                <button id="startButton" class="game-button">Start Parenting</button>
+                <button id="stopButton" class="game-button bg-red-500 hover:bg-red-600">Stop Game</button>
             </div>
         </div>
-        <canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas" class="w-full h-full bg-game-canvas"></canvas>
     </div>
     <script src="game.js"></script>
 </body>
