@@ -26,6 +26,15 @@ class Game {
         this.controlHintFadeDirection = 'in'; // 'in' or 'out'
         this.controlHintTimeout = null;
         
+        // Pickup hint properties
+        this.showPickupHint = false;
+        this.pickupHintOpacity = 0;
+        this.pickupHintFadeInDuration = 500; // 0.5 seconds fade in
+        this.pickupHintFadeOutDuration = 500; // 0.5 seconds fade out
+        this.pickupHintFadeStartTime = 0;
+        this.pickupHintFadeDirection = 'in'; // 'in' or 'out'
+        this.pickupHintTimeout = null;
+        
         // Define rooms first so we can reference them for baby position
         this.rooms = {
             bedroom: { 
@@ -105,7 +114,20 @@ class Game {
             isHoldingBaby: false
         };
         
-        this.keys = {};
+        // Add E key to key mappings
+        this.keys = {
+            'ArrowLeft': false,
+            'ArrowRight': false,
+            'ArrowUp': false,
+            'ArrowDown': false,
+            'a': false,
+            'd': false,
+            'w': false,
+            's': false,
+            ' ': false,
+            'e': false  // Add E key for baby pickup
+        };
+        
         this.setupEventListeners();
         this.showStartScreen();
     }
@@ -572,6 +594,25 @@ class Game {
             }
         }
         
+        // Update pickup hint opacity
+        if (this.showPickupHint) {
+            const elapsedTime = Date.now() - this.pickupHintFadeStartTime;
+            if (this.pickupHintFadeDirection === 'in') {
+                if (elapsedTime < this.pickupHintFadeInDuration) {
+                    this.pickupHintOpacity = elapsedTime / this.pickupHintFadeInDuration;
+                } else {
+                    this.pickupHintOpacity = 1.0;
+                }
+            } else { // fade out
+                if (elapsedTime < this.pickupHintFadeOutDuration) {
+                    this.pickupHintOpacity = 1.0 - (elapsedTime / this.pickupHintFadeOutDuration);
+                } else {
+                    this.pickupHintOpacity = 0;
+                    this.showPickupHint = false;
+                }
+            }
+        }
+        
         // Parent movement
         if (this.keys['ArrowLeft'] || this.keys['a']) {
             this.parent.x = Math.max(0, this.parent.x - this.parent.speed);
@@ -586,11 +627,62 @@ class Game {
             this.parent.y = Math.min(this.canvas.height - this.parent.height, this.parent.y + this.parent.speed);
         }
 
-        // Check for collision with baby and handle pickup
-        if (!this.parent.isHoldingBaby && this.checkCollision(this.parent, this.baby)) {
-            this.parent.isHoldingBaby = true;
-            this.baby.isSleeping = false;
-            this.baby.currentFurniture = null;
+        // Check for collision with baby and handle pickup with E key
+        if (!this.parent.isHoldingBaby) {
+            // Check if parent is colliding with baby
+            const isCollidingWithBaby = this.checkCollision(this.parent, this.baby);
+            
+            // Show pickup hint if colliding with baby
+            if (isCollidingWithBaby) {
+                if (!this.showPickupHint) {
+                    this.showPickupHint = true;
+                    this.pickupHintOpacity = 0;
+                    this.pickupHintFadeDirection = 'in';
+                    this.pickupHintFadeStartTime = Date.now();
+                    
+                    // Clear existing timeout if there is one
+                    if (this.pickupHintTimeout) {
+                        clearTimeout(this.pickupHintTimeout);
+                    }
+                }
+            } else {
+                // Hide pickup hint if not colliding
+                if (this.showPickupHint) {
+                    this.pickupHintFadeDirection = 'out';
+                    this.pickupHintFadeStartTime = Date.now();
+                    
+                    // Clear existing timeout if there is one
+                    if (this.pickupHintTimeout) {
+                        clearTimeout(this.pickupHintTimeout);
+                    }
+                    
+                    // Set timeout to hide hint after fade out
+                    this.pickupHintTimeout = setTimeout(() => {
+                        this.showPickupHint = false;
+                    }, this.pickupHintFadeOutDuration);
+                }
+            }
+            
+            // Handle pickup with E key
+            if (this.keys['e'] && isCollidingWithBaby) {
+                this.parent.isHoldingBaby = true;
+                this.baby.isSleeping = false;
+                this.baby.currentFurniture = null;
+                
+                // Hide pickup hint
+                this.pickupHintFadeDirection = 'out';
+                this.pickupHintFadeStartTime = Date.now();
+                
+                // Clear existing timeout if there is one
+                if (this.pickupHintTimeout) {
+                    clearTimeout(this.pickupHintTimeout);
+                }
+                
+                // Set timeout to hide hint after fade out
+                this.pickupHintTimeout = setTimeout(() => {
+                    this.showPickupHint = false;
+                }, this.pickupHintFadeOutDuration);
+            }
         }
 
         // Update baby position if being held
@@ -629,66 +721,6 @@ class Game {
                         this.showControlHint = false;
                     }, this.controlHintFadeOutDuration);
                 }
-            }
-        }
-
-        // Handle baby placement with spacebar
-        if (this.keys[' '] && this.parent.isHoldingBaby) {
-            // Temporarily position the baby at the parent's position for collision detection
-            const originalBabyX = this.baby.x;
-            const originalBabyY = this.baby.y;
-            
-            // Position baby at parent's position for collision detection
-            this.baby.x = this.parent.x + this.parent.width/2 - this.baby.width/2;
-            this.baby.y = this.parent.y - this.baby.height;
-            
-            const nearbyFurniture = this.checkFurnitureCollision();
-            
-            // Restore original baby position
-            this.baby.x = originalBabyX;
-            this.baby.y = originalBabyY;
-            
-            if (nearbyFurniture) {
-                // Check if it's dangerous furniture
-                if (this.canInteractWithFurniture(nearbyFurniture)) {
-                    this.placeBabyInFurniture(nearbyFurniture);
-                    this.parent.isHoldingBaby = false;
-                    
-                    // Hide control hint
-                    this.controlHintFadeDirection = 'out';
-                    this.controlHintFadeStartTime = Date.now();
-                    
-                    // Clear existing timeout if there is one
-                    if (this.controlHintTimeout) {
-                        clearTimeout(this.controlHintTimeout);
-                    }
-                    
-                    // Set timeout to hide hint after fade out
-                    this.controlHintTimeout = setTimeout(() => {
-                        this.showControlHint = false;
-                    }, this.controlHintFadeOutDuration);
-                }
-                // If it's dangerous furniture, the warning is shown in canInteractWithFurniture
-                // and we keep holding the baby
-            } else {
-                // If no furniture nearby, just put the baby down
-                this.parent.isHoldingBaby = false;
-                this.baby.currentFurniture = null;
-                this.baby.isSleeping = false;
-                
-                // Hide control hint
-                this.controlHintFadeDirection = 'out';
-                this.controlHintFadeStartTime = Date.now();
-                
-                // Clear existing timeout if there is one
-                if (this.controlHintTimeout) {
-                    clearTimeout(this.controlHintTimeout);
-                }
-                
-                // Set timeout to hide hint after fade out
-                this.controlHintTimeout = setTimeout(() => {
-                    this.showControlHint = false;
-                }, this.controlHintFadeOutDuration);
             }
         }
     }
@@ -747,6 +779,11 @@ class Game {
             if (this.showControlHint && this.parent.isHoldingBaby) {
                 this.drawControlHint();
             }
+            
+            // Draw pickup hint if active
+            if (this.showPickupHint && !this.parent.isHoldingBaby) {
+                this.drawPickupHint();
+            }
         }
     }
     
@@ -776,11 +813,46 @@ class Game {
         ctx.font = 'bold 20px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('SPACE', centerX, centerY);
+        ctx.fillText('SPACE', centerX, centerY - 15);
         
         // Draw action text
         ctx.font = '16px Arial';
-        ctx.fillText('Place Baby', centerX, centerY + 30);
+        ctx.fillText('Place Baby', centerX, centerY + 15);
+        
+        ctx.restore();
+    }
+    
+    drawPickupHint() {
+        const ctx = this.ctx;
+        const centerX = this.baby.x + this.baby.width / 2;
+        const centerY = this.baby.y - 30;
+        const radius = 40;
+        
+        // Draw outer circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.pickupHintOpacity})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Draw inner circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius - 8, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.pickupHintOpacity})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw E key icon
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.pickupHintOpacity})`;
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('E', centerX, centerY);
+        
+        // Draw action text
+        ctx.font = '16px Arial';
+        ctx.fillText('Pick Up Baby', centerX, centerY + 25);
         
         ctx.restore();
     }
