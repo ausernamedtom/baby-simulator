@@ -19,6 +19,15 @@ class Game {
         this.gameStarted = false;
         this.gameLoopId = null;
         
+        // Time system properties
+        this.gameStartTime = new Date();
+        this.gameStartTime.setHours(8, 0, 0, 0); // Set initial time to 8:00 AM
+        this.timeMultiplier = 384; // 384 times faster than real life
+        this.currentHour = 8; // Set initial hour to 8
+        this.isNight = false;
+        this.nightOpacity = 0;
+        this.nightFadeDuration = 2000; // 2 seconds for day/night transition
+        
         this.warningMessage = null;
         this.warningTimeout = null;
         this.warningOpacity = 0;
@@ -54,6 +63,13 @@ class Game {
         this.cooldownIndicatorFadeOutDuration = 300;
         this.cooldownIndicatorFadeStartTime = 0;
         this.cooldownIndicatorFadeDirection = 'in';
+        
+        // Baby state properties
+        this.babyWakeUpInterval = null;
+        this.babyWakeUpChance = 0.001; // 0.1% chance per frame to wake up
+        this.babyCryDuration = 5000; // 5 seconds of crying
+        this.babyCryStartTime = 0;
+        this.babyIsCrying = false;
         
         // Define rooms first so we can reference them for baby position
         this.rooms = {
@@ -121,7 +137,9 @@ class Game {
             height: 60,
             name: '',
             isSleeping: true,
-            currentFurniture: 'bed'  // Track which furniture the baby is in
+            currentFurniture: 'bed',  // Track which furniture the baby is in
+            happiness: 100,  // Add happiness property starting at 100%
+            hunger: 0  // Add hunger property starting at 0
         };
 
         this.parent = {
@@ -196,6 +214,11 @@ class Game {
         this.playerNameInput.value = babyName;
         this.baby.name = babyName;
         
+        // Set initial game time
+        this.gameStartTime = new Date();
+        this.gameStartTime.setHours(8, 0, 0, 0); // Set initial time to 8:00 AM
+        this.currentHour = 8; // Set initial hour to 8
+        
         // Hide start screen and begin game
         this.startScreen.classList.add('hidden');
         this.gameStarted = true;
@@ -222,6 +245,11 @@ class Game {
         
         // Draw furniture
         room.furniture.forEach(item => this.drawFurniture(item));
+        
+        // Draw clock in living room
+        if (room.label === 'Living Room') {
+            this.drawClock(room.x + room.width - 100, room.y + 30);
+        }
     }
     
     drawFurniture(item) {
@@ -487,6 +515,66 @@ class Game {
                 ctx.fillText('z', x + width + 5 + (i * 5), y - 5 - (i * 10));
             }
         }
+
+        // Draw happiness bar
+        this.drawHappinessBar(x, y + height + 10, width);
+    }
+    
+    drawHappinessBar(x, y, width) {
+        const ctx = this.ctx;
+        const barHeight = 8;
+        const padding = 2;
+        const spacing = 4; // Space between bars
+        
+        // Draw happiness bar
+        // Determine bar color based on happiness
+        let happinessColor;
+        if (this.baby.happiness >= 70) {
+            happinessColor = '#4CAF50'; // Green for high happiness
+        } else if (this.baby.happiness >= 30) {
+            happinessColor = '#FFC107'; // Yellow for medium happiness
+        } else {
+            happinessColor = '#F44336'; // Red for low happiness
+        }
+        
+        // Draw happiness background
+        ctx.fillStyle = '#E0E0E0';
+        ctx.fillRect(x, y, width, barHeight);
+        
+        // Draw happiness level
+        ctx.fillStyle = happinessColor;
+        const happinessWidth = (width - padding * 2) * (this.baby.happiness / 100);
+        ctx.fillRect(x + padding, y + padding, happinessWidth, barHeight - padding * 2);
+        
+        // Draw happiness border
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, barHeight);
+
+        // Draw hunger bar below happiness bar
+        // Determine bar color based on hunger (inverse of happiness)
+        let hungerColor;
+        if (this.baby.hunger >= 70) {
+            hungerColor = '#F44336'; // Red for high hunger
+        } else if (this.baby.hunger >= 30) {
+            hungerColor = '#FFC107'; // Yellow for medium hunger
+        } else {
+            hungerColor = '#4CAF50'; // Green for low hunger
+        }
+        
+        // Draw hunger background
+        ctx.fillStyle = '#E0E0E0';
+        ctx.fillRect(x, y + barHeight + spacing, width, barHeight);
+        
+        // Draw hunger level
+        ctx.fillStyle = hungerColor;
+        const hungerWidth = (width - padding * 2) * (this.baby.hunger / 100);
+        ctx.fillRect(x + padding, y + barHeight + spacing + padding, hungerWidth, barHeight - padding * 2);
+        
+        // Draw hunger border
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y + barHeight + spacing, width, barHeight);
     }
     
     drawParent(x, y, width, height) {
@@ -592,6 +680,32 @@ class Game {
 
     update() {
         if (!this.gameStarted) return;
+        
+        // Update time of day
+        const realTimeElapsed = new Date() - this.gameStartTime;
+        const gameTimeElapsed = realTimeElapsed * this.timeMultiplier;
+        const gameDate = new Date(this.gameStartTime.getTime() + gameTimeElapsed);
+        this.currentHour = gameDate.getHours();
+        
+        // Update night state and opacity
+        const isNewNight = this.currentHour >= 20 || this.currentHour < 6;
+        if (isNewNight !== this.isNight) {
+            this.isNight = isNewNight;
+            this.nightFadeStartTime = Date.now();
+        }
+        
+        // Update night overlay opacity
+        if (this.nightFadeStartTime) {
+            const elapsedTime = Date.now() - this.nightFadeStartTime;
+            if (elapsedTime < this.nightFadeDuration) {
+                this.nightOpacity = this.isNight ? 
+                    (elapsedTime / this.nightFadeDuration) : 
+                    (1 - elapsedTime / this.nightFadeDuration);
+            } else {
+                this.nightOpacity = this.isNight ? 1 : 0;
+                this.nightFadeStartTime = null;
+            }
+        }
         
         // Update warning opacity for fade effect
         if (this.warningMessage) {
@@ -797,6 +911,71 @@ class Game {
                 }
             }
         }
+
+        // Handle baby wake-up and crying
+        if (this.baby.isSleeping && !this.parent.isHoldingBaby) {
+            // Random chance to wake up
+            if (Math.random() < this.babyWakeUpChance) {
+                this.baby.isSleeping = false;
+                this.babyIsCrying = true;
+                this.babyCryStartTime = Date.now();
+                console.log('Baby woke up and started crying!');
+            }
+        }
+        
+        // Handle crying duration
+        if (this.babyIsCrying) {
+            const cryTimeElapsed = Date.now() - this.babyCryStartTime;
+            if (cryTimeElapsed >= this.babyCryDuration) {
+                this.babyIsCrying = false;
+                this.baby.isSleeping = true;
+                console.log('Baby stopped crying and went back to sleep');
+            }
+        }
+
+        // Update baby hunger based on state
+        if (this.baby.isSleeping) {
+            // Slow hunger increase while sleeping
+            this.baby.hunger = Math.min(100, this.baby.hunger + 0.005);
+        } else if (this.parent.isHoldingBaby) {
+            // Check if parent is in kitchen
+            const kitchen = this.rooms.kitchen;
+            const isInKitchen = this.parent.x >= kitchen.x && 
+                               this.parent.x <= kitchen.x + kitchen.width &&
+                               this.parent.y >= kitchen.y && 
+                               this.parent.y <= kitchen.y + kitchen.height;
+            
+            if (isInKitchen) {
+                // Decrease hunger while in kitchen
+                this.baby.hunger = Math.max(0, this.baby.hunger - 0.1);
+            } else {
+                // Normal hunger increase while awake and held
+                this.baby.hunger = Math.min(100, this.baby.hunger + 0.02);
+            }
+        } else {
+            // Faster hunger increase while awake
+            this.baby.hunger = Math.min(100, this.baby.hunger + 0.02);
+        }
+
+        // Update baby happiness based on state
+        if (this.baby.isSleeping) {
+            if (this.baby.hunger < 50) {
+                // Increase happiness while sleeping and not hungry
+                this.baby.happiness = Math.min(100, this.baby.happiness + 0.1);
+            } else {
+                // Decrease happiness while sleeping and hungry
+                this.baby.happiness = Math.max(0, this.baby.happiness - 0.05);
+            }
+        } else if (this.parent.isHoldingBaby) {
+            // Maintain high happiness while being held
+            this.baby.happiness = Math.min(100, this.baby.happiness + 0.05);
+        } else if (this.babyIsCrying) {
+            // Decrease happiness while crying
+            this.baby.happiness = Math.max(0, this.baby.happiness - 0.2);
+        } else {
+            // Slowly decrease happiness when awake and not being held
+            this.baby.happiness = Math.max(0, this.baby.happiness - 0.05);
+        }
     }
     
     draw() {
@@ -826,6 +1005,12 @@ class Game {
             this.ctx.textAlign = 'center';
             this.ctx.fillText(this.baby.name, this.baby.x + this.baby.width / 2, this.baby.y - 10);
             this.ctx.fillText(this.parent.name, this.parent.x + this.parent.width / 2, this.parent.y - 30);
+            
+            // Draw night overlay if it's night time
+            if (this.nightOpacity > 0) {
+                this.ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * this.nightOpacity})`;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
             
             // Development mode features
             if (this.devMode) {
@@ -863,6 +1048,14 @@ class Game {
             if (this.showPickupHint && !this.parent.isHoldingBaby) {
                 this.drawPickupHint();
             }
+
+            // Draw crying animation if baby is crying
+            if (this.babyIsCrying && !this.parent.isHoldingBaby) {
+                this.drawCryingAnimation();
+            }
+        } else {
+            // Draw start screen
+            this.drawStartScreen();
         }
     }
     
@@ -1032,6 +1225,126 @@ class Game {
         ctx.restore();
     }
     
+    drawClock(x, y) {
+        const ctx = this.ctx;
+        const radius = 40;
+        const centerX = x + radius;
+        const centerY = y + radius;
+        
+        ctx.save();
+        
+        // Draw clock background based on AM/PM
+        if (this.currentHour >= 12) {
+            // PM - Night sky with stars
+            ctx.fillStyle = '#1a237e';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw stars
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const starX = centerX + Math.cos(angle) * (radius * 0.7);
+                const starY = centerY + Math.sin(angle) * (radius * 0.7);
+                ctx.beginPath();
+                ctx.arc(starX, starY, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else {
+            // AM - Day sky with sun
+            ctx.fillStyle = '#4fc3f7';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw sun
+            ctx.fillStyle = '#ffeb3b';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw sun rays
+            ctx.strokeStyle = '#ffeb3b';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const startX = centerX + Math.cos(angle) * (radius * 0.3);
+                const startY = centerY + Math.sin(angle) * (radius * 0.3);
+                const endX = centerX + Math.cos(angle) * (radius * 0.6);
+                const endY = centerY + Math.sin(angle) * (radius * 0.6);
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+        }
+        
+        // Draw clock face
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Draw hour indicator
+        const hour = this.currentHour % 12 || 12; // Convert to 12-hour format
+        const hourAngle = (hour / 12) * Math.PI * 2 - Math.PI / 2;
+        const hourLength = radius * 0.6;
+        
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(
+            centerX + Math.cos(hourAngle) * hourLength,
+            centerY + Math.sin(hourAngle) * hourLength
+        );
+        ctx.stroke();
+        
+        // Draw center dot
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+    
+    drawCryingAnimation() {
+        const ctx = this.ctx;
+        const centerX = this.baby.x + this.baby.width / 2;
+        const centerY = this.baby.y - 20;
+        
+        ctx.save();
+        
+        // Draw crying mouth
+        ctx.strokeStyle = '#FF0000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 10, 0, Math.PI);
+        ctx.stroke();
+        
+        // Draw tears
+        ctx.strokeStyle = '#4FC3F7';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+            const tearX = centerX - 5 + (i * 5);
+            ctx.beginPath();
+            ctx.moveTo(tearX, centerY + 5);
+            ctx.lineTo(tearX, centerY + 15);
+            ctx.stroke();
+        }
+        
+        // Draw "WAAH!" text
+        ctx.fillStyle = '#FF0000';
+        ctx.font = 'bold 16px "Comic Sans MS", cursive';
+        ctx.textAlign = 'center';
+        ctx.fillText('WAAH!', centerX, centerY - 30);
+        
+        ctx.restore();
+    }
+    
     gameLoop() {
         this.update();
         this.draw();
@@ -1063,6 +1376,12 @@ class Game {
         this.gameStarted = false;
         this.startScreen.classList.remove('hidden');
         this.playerNameInput.focus();
+        
+        // Clear baby wake-up interval
+        if (this.babyWakeUpInterval) {
+            clearInterval(this.babyWakeUpInterval);
+            this.babyWakeUpInterval = null;
+        }
     }
 
     setupDevUI() {
