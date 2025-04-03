@@ -1,15 +1,23 @@
 class Game {
-    constructor() {
+    constructor(devMode = false) {
+        this.devMode = devMode;
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = 800;
         this.canvas.height = 600;
         
+        // Development mode UI elements
+        if (this.devMode) {
+            this.setupDevUI();
+        }
+        
         this.startScreen = document.getElementById('startScreen');
         this.playerNameInput = document.getElementById('playerName');
         this.startButton = document.getElementById('startButton');
+        this.stopButton = document.getElementById('stopButton');
         
         this.gameStarted = false;
+        this.gameLoopId = null;
         
         this.warningMessage = null;
         this.warningTimeout = null;
@@ -124,12 +132,10 @@ class Game {
             'd': false,
             'w': false,
             's': false,
-            ' ': false,
-            'e': false  // Add E key for baby pickup
+            ' ': false  // Space key for baby pickup
         };
         
         this.setupEventListeners();
-        this.showStartScreen();
     }
     
     setupEventListeners() {
@@ -152,6 +158,13 @@ class Game {
                 this.startGame();
             }
         });
+
+        // If in dev mode, start the game automatically
+        if (this.devMode) {
+            this.startGame();
+        } else {
+            this.showStartScreen();
+        }
     }
     
     showStartScreen() {
@@ -160,18 +173,21 @@ class Game {
     }
     
     startGame() {
-        const name = this.playerNameInput.value.trim();
-        if (name) {
-            this.baby.name = name;
-            this.startScreen.classList.add('hidden');
-            this.gameStarted = true;
-            this.gameLoop();
-        } else {
-            this.playerNameInput.classList.add('error');
-            setTimeout(() => {
-                this.playerNameInput.classList.remove('error');
-            }, 500);
-        }
+        // Generate a random baby name if none is provided or if in dev mode
+        const randomNames = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'Ethan', 'Sophia', 'Mason', 'Isabella', 'Lucas'];
+        const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
+        
+        // In dev mode, always use random name. Otherwise, use input value if provided
+        const babyName = this.devMode ? randomName : (this.playerNameInput.value || randomName);
+        
+        // Set the name in the input field and for the baby
+        this.playerNameInput.value = babyName;
+        this.baby.name = babyName;
+        
+        // Hide start screen and begin game
+        this.startScreen.classList.add('hidden');
+        this.gameStarted = true;
+        this.gameLoop();
     }
     
     drawRoom(room) {
@@ -627,49 +643,42 @@ class Game {
             this.parent.y = Math.min(this.canvas.height - this.parent.height, this.parent.y + this.parent.speed);
         }
 
-        // Check for collision with baby and handle pickup with E key
-        if (!this.parent.isHoldingBaby) {
-            // Check if parent is colliding with baby
-            const isCollidingWithBaby = this.checkCollision(this.parent, this.baby);
-            
-            // Show pickup hint if colliding with baby
-            if (isCollidingWithBaby) {
-                if (!this.showPickupHint) {
-                    this.showPickupHint = true;
-                    this.pickupHintOpacity = 0;
-                    this.pickupHintFadeDirection = 'in';
-                    this.pickupHintFadeStartTime = Date.now();
-                    
-                    // Clear existing timeout if there is one
-                    if (this.pickupHintTimeout) {
-                        clearTimeout(this.pickupHintTimeout);
-                    }
-                }
-            } else {
-                // Hide pickup hint if not colliding
-                if (this.showPickupHint) {
-                    this.pickupHintFadeDirection = 'out';
-                    this.pickupHintFadeStartTime = Date.now();
-                    
-                    // Clear existing timeout if there is one
-                    if (this.pickupHintTimeout) {
-                        clearTimeout(this.pickupHintTimeout);
-                    }
-                    
-                    // Set timeout to hide hint after fade out
-                    this.pickupHintTimeout = setTimeout(() => {
-                        this.showPickupHint = false;
-                    }, this.pickupHintFadeOutDuration);
+        // Check for collision with baby
+        const isCollidingWithBaby = this.checkCollision(this.parent, this.baby);
+        
+        // Handle pickup hint display
+        if (isCollidingWithBaby && !this.parent.isHoldingBaby) {
+            // Show pickup hint
+            if (!this.showPickupHint) {
+                this.showPickupHint = true;
+                this.pickupHintOpacity = 0;
+                this.pickupHintFadeDirection = 'in';
+                this.pickupHintFadeStartTime = Date.now();
+                
+                // Clear existing timeout if there is one
+                if (this.pickupHintTimeout) {
+                    clearTimeout(this.pickupHintTimeout);
                 }
             }
             
-            // Handle pickup with E key
-            if (this.keys['e'] && isCollidingWithBaby) {
+            // Handle pickup with Space key
+            if (this.keys[' ']) {
                 this.parent.isHoldingBaby = true;
                 this.baby.isSleeping = false;
                 this.baby.currentFurniture = null;
                 
-                // Hide pickup hint
+                // Hide pickup hint immediately
+                this.showPickupHint = false;
+                this.pickupHintOpacity = 0;
+                
+                // Clear any existing timeout
+                if (this.pickupHintTimeout) {
+                    clearTimeout(this.pickupHintTimeout);
+                }
+            }
+        } else {
+            // Hide pickup hint if not colliding or already holding baby
+            if (this.showPickupHint) {
                 this.pickupHintFadeDirection = 'out';
                 this.pickupHintFadeStartTime = Date.now();
                 
@@ -701,6 +710,21 @@ class Game {
                     this.controlHintFadeStartTime = Date.now();
                     
                     // Clear existing timeout if there is one
+                    if (this.controlHintTimeout) {
+                        clearTimeout(this.controlHintTimeout);
+                    }
+                }
+                
+                // Handle placement with Space key
+                if (this.keys[' ']) {
+                    this.placeBabyInFurniture(nearbyFurniture);
+                    this.parent.isHoldingBaby = false;
+                    
+                    // Hide control hint immediately
+                    this.showControlHint = false;
+                    this.controlHintOpacity = 0;
+                    
+                    // Clear any existing timeout
                     if (this.controlHintTimeout) {
                         clearTimeout(this.controlHintTimeout);
                     }
@@ -752,6 +776,11 @@ class Game {
             this.ctx.textAlign = 'center';
             this.ctx.fillText(this.baby.name, this.baby.x + this.baby.width / 2, this.baby.y - 10);
             this.ctx.fillText(this.parent.name, this.parent.x + this.parent.width / 2, this.parent.y - 30);
+            
+            // Development mode features
+            if (this.devMode) {
+                this.drawDebugInfo();
+            }
             
             // Draw warning message if exists
             if (this.warningMessage) {
@@ -843,12 +872,12 @@ class Game {
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        // Draw E key icon
+        // Draw Space key icon
         ctx.fillStyle = `rgba(255, 255, 255, ${this.pickupHintOpacity})`;
         ctx.font = 'bold 20px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('E', centerX, centerY);
+        ctx.fillText('SPACE', centerX, centerY);
         
         // Draw action text
         ctx.font = '16px Arial';
@@ -857,10 +886,52 @@ class Game {
         ctx.restore();
     }
     
+    drawDebugInfo() {
+        // Update debug panel with game state
+        const debugPanel = document.getElementById('debugPanel');
+        if (debugPanel) {
+            const debugInfo = {
+                'Parent Position': `(${Math.round(this.parent.x)}, ${Math.round(this.parent.y)})`,
+                'Baby Position': `(${Math.round(this.baby.x)}, ${Math.round(this.baby.y)})`,
+                'Baby State': this.baby.isSleeping ? 'Sleeping' : 'Awake',
+                'Current Furniture': this.baby.currentFurniture || 'None',
+                'Holding Baby': this.parent.isHoldingBaby ? 'Yes' : 'No',
+                'FPS': Math.round(1000 / (performance.now() - this._lastFrameTime))
+            };
+            
+            this._lastFrameTime = performance.now();
+            
+            debugPanel.innerHTML = Object.entries(debugInfo)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join('<br>');
+        }
+
+        // Draw collision boxes in dev mode
+        this.ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+        this.ctx.lineWidth = 2;
+        
+        // Parent collision box
+        this.ctx.strokeRect(this.parent.x, this.parent.y, this.parent.width, this.parent.height);
+        
+        // Baby collision box
+        this.ctx.strokeRect(this.baby.x, this.baby.y, this.baby.width, this.baby.height);
+        
+        // Room and furniture collision boxes
+        Object.values(this.rooms).forEach(room => {
+            this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+            this.ctx.strokeRect(room.x, room.y, room.width, room.height);
+            
+            room.furniture.forEach(furniture => {
+                this.ctx.strokeStyle = 'rgba(0, 0, 255, 0.5)';
+                this.ctx.strokeRect(furniture.x, furniture.y, furniture.width, furniture.height);
+            });
+        });
+    }
+    
     gameLoop() {
         this.update();
         this.draw();
-        requestAnimationFrame(() => this.gameLoop());
+        this.gameLoopId = requestAnimationFrame(() => this.gameLoop());
     }
 
     showWarning(message) {
@@ -879,9 +950,54 @@ class Game {
             this.warningOpacity = 0;
         }, this.warningFadeDuration);
     }
+
+    stopGame() {
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
+            this.gameLoopId = null;
+        }
+        this.gameStarted = false;
+        this.startScreen.classList.remove('hidden');
+        this.playerNameInput.focus();
+    }
+
+    setupDevUI() {
+        // Create dev mode indicator
+        const devIndicator = document.createElement('div');
+        devIndicator.style.position = 'fixed';
+        devIndicator.style.top = '10px';
+        devIndicator.style.right = '10px';
+        devIndicator.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
+        devIndicator.style.color = 'white';
+        devIndicator.style.padding = '5px 10px';
+        devIndicator.style.borderRadius = '5px';
+        devIndicator.style.fontFamily = 'Arial, sans-serif';
+        devIndicator.style.zIndex = '1000';
+        devIndicator.textContent = 'DEV MODE';
+        document.body.appendChild(devIndicator);
+
+        // Create debug panel
+        const debugPanel = document.createElement('div');
+        debugPanel.style.position = 'fixed';
+        debugPanel.style.bottom = '10px';
+        debugPanel.style.right = '10px';
+        debugPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        debugPanel.style.color = 'white';
+        debugPanel.style.padding = '10px';
+        debugPanel.style.borderRadius = '5px';
+        debugPanel.style.fontFamily = 'monospace';
+        debugPanel.style.zIndex = '1000';
+        debugPanel.id = 'debugPanel';
+        document.body.appendChild(debugPanel);
+    }
 }
 
 // Start the game when the window loads
 window.addEventListener('load', () => {
-    new Game();
+    // Check for development mode in URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const devMode = urlParams.has('dev');
+    
+    // Initialize game with dev mode parameter
+    new Game(devMode);
 }); 
