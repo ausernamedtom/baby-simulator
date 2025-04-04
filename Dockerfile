@@ -11,13 +11,23 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Copy optimized files
-COPY --from=builder /app/game.min.js /usr/share/nginx/html/game.js
-COPY --from=builder /app/style.min.css /usr/share/nginx/html/style.css
+# Create necessary directories with proper permissions
+RUN mkdir -p /usr/share/nginx/html/images && \
+    chown -R nginx:nginx /usr/share/nginx/html
+
+# Copy files
+COPY --from=builder /app/game.js /usr/share/nginx/html/
+COPY --from=builder /app/style.css /usr/share/nginx/html/
 COPY index.html /usr/share/nginx/html/
+COPY --from=builder /app/images/landscape.png /usr/share/nginx/html/images/
+COPY --from=builder /app/images/portrait.png /usr/share/nginx/html/images/
 
 # Add nginx configuration for caching and compression
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Set proper permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html
 
 # Expose port 80
 EXPOSE 80

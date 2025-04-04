@@ -3,8 +3,11 @@ class Game {
         this.devMode = devMode;
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        this.canvas.width = 800;
-        this.canvas.height = 600;
+        
+        // Set canvas size to match container
+        const container = document.getElementById('game-container');
+        this.canvas.width = container.clientWidth;
+        this.canvas.height = container.clientHeight;
         
         // Development mode UI elements
         if (this.devMode) {
@@ -182,7 +185,14 @@ class Game {
             this.keys[e.key] = false;
         });
         
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('game-container');
+            this.canvas.width = container.clientWidth;
+            this.canvas.height = container.clientHeight;
+        });
+        
         this.startButton.addEventListener('click', () => this.startGame());
+        this.stopButton.addEventListener('click', () => this.stopGame());
         this.playerNameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.startGame();
@@ -219,8 +229,11 @@ class Game {
         this.gameStartTime.setHours(8, 0, 0, 0); // Set initial time to 8:00 AM
         this.currentHour = 8; // Set initial hour to 8
         
-        // Hide start screen and begin game
-        this.startScreen.classList.add('hidden');
+        // Hide start screen and show canvas
+        this.startScreen.style.display = 'none';
+        this.canvas.classList.remove('hidden');
+        
+        // Begin game
         this.gameStarted = true;
         this.gameLoop();
     }
@@ -1374,7 +1387,10 @@ class Game {
             this.gameLoopId = null;
         }
         this.gameStarted = false;
-        this.startScreen.classList.remove('hidden');
+        
+        // Show start screen and hide canvas
+        this.startScreen.style.display = 'block';
+        this.canvas.classList.add('hidden');
         this.playerNameInput.focus();
         
         // Clear baby wake-up interval

@@ -5,22 +5,148 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Baby Simulator</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Portrait mode */
+        @media (aspect-ratio < 1) {
+            #game-container {
+                background-image: url('images/portrait.png');
+            }
+        }
+
+        /* Landscape mode */
+        @media (aspect-ratio >= 1) {
+            #game-container {
+                background-image: url('images/landscape.png');
+            }
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #title-container {
+            margin-bottom: 2rem;
+        }
+
+        #game-title {
+            font-size: 2.5rem;
+            color: #ff69b4;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            margin: 0;
+        }
+
+        #subtitle {
+            font-size: 1.2rem;
+            color: #8a2be2;
+            margin: 0.5rem 0;
+        }
+
+        #game-label {
+            display: block;
+            font-size: 1.2rem;
+            color: #8a2be2;
+            margin-bottom: 0.5rem;
+        }
+
+        #playerName {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 2px solid #8a2be2;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            width: 200px;
+        }
+
+        #startButton {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-right: 1rem;
+        }
+
+        #startButton:hover {
+            background-color: #45a049;
+        }
+
+        #stopButton {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #stopButton:hover {
+            background-color: #d32f2f;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas.hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="game-container">
-        <div id="startScreen" class="screen">
-            <div class="title-container">
-                <h1 class="game-title">Baby Simulator</h1>
-                <p class="subtitle">Your Virtual Parenting Adventure</p>
+    <div id="game-container">
+        <div id="startScreen">
+            <div id="title-container">
+                <h1 id="game-title">Baby Simulator</h1>
+                <p id="subtitle">Take care of your virtual baby!</p>
             </div>
-            <div class="input-container">
-                <label for="playerName" class="game-label">Enter your baby's name:</label>
-                <input type="text" id="playerName" maxlength="20" placeholder="Baby's name" class="game-input">
-                <button id="startButton" class="game-button">Start Parenting</button>
-                <button id="stopButton" class="game-button bg-red-500 hover:bg-red-600">Stop Game</button>
-            </div>
+            <label id="game-label" for="playerName">Enter your name:</label>
+            <input type="text" id="playerName" placeholder="Parent name">
+            <button id="startButton">Start Game</button>
+            <button id="stopButton">Stop Game</button>
         </div>
-        <canvas id="gameCanvas" class="w-full h-full bg-game-canvas"></canvas>
+        <canvas id="gameCanvas" class="hidden"></canvas>
     </div>
     <script src="game.js"></script>
 </body>
