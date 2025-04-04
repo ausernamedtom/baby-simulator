@@ -138,6 +138,74 @@
         canvas.hidden {
             display: none;
         }
+
+        #install-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        #install-banner.visible {
+            transform: translateY(0);
+        }
+
+        #install-banner .app-icon {
+            width: 48px;
+            height: 48px;
+            margin-right: 1rem;
+        }
+
+        #install-banner .banner-content {
+            flex: 1;
+        }
+
+        #install-banner .banner-title {
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0;
+            color: #333;
+        }
+
+        #install-banner .banner-text {
+            font-size: 0.9rem;
+            margin: 0.25rem 0 0;
+            color: #666;
+        }
+
+        #install-banner .install-button {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #install-banner .install-button:hover {
+            background-color: #357abd;
+        }
+
+        #install-banner .close-button {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 0.5rem;
+            margin-left: 1rem;
+        }
     </style>
     <script>
         // Register service worker
@@ -152,6 +220,39 @@
                     });
             });
         }
+
+        // Install banner functionality
+        let deferredPrompt;
+        const installBanner = document.getElementById('install-banner');
+        const installButton = document.getElementById('install-button');
+        const closeButton = document.getElementById('close-banner');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBanner.classList.add('visible');
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                }
+                deferredPrompt = null;
+                installBanner.classList.remove('visible');
+            }
+        });
+
+        closeButton.addEventListener('click', () => {
+            installBanner.classList.remove('visible');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installBanner.classList.remove('visible');
+            deferredPrompt = null;
+        });
     </script>
 </head>
 <body>
@@ -167,6 +268,15 @@
             <button id="stopButton">Stop Game</button>
         </div>
         <canvas id="gameCanvas" class="hidden"></canvas>
+    </div>
+    <div id="install-banner">
+        <img src="/icons/icon-72x72.png" alt="Baby Simulator" class="app-icon">
+        <div class="banner-content">
+            <h3 class="banner-title">Install Baby Simulator</h3>
+            <p class="banner-text">Get the full experience by installing the app on your device</p>
+        </div>
+        <button id="install-button" class="install-button">Install</button>
+        <button id="close-banner" class="close-button">&times;</button>
     </div>
     <script src="game.js"></script>
 </body>
