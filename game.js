@@ -172,17 +172,25 @@ class Game {
     }
     
     setupEventListeners() {
+        // Key down event listener
         window.addEventListener('keydown', (e) => {
-            this.keys[e.key] = true;
-            
-            // Prevent spacebar from scrolling the page
-            if (e.key === ' ') {
-                e.preventDefault();
+            if (this.keys.hasOwnProperty(e.key)) {
+                this.keys[e.key] = true;
             }
         });
-        
+
+        // Key up event listener
         window.addEventListener('keyup', (e) => {
-            this.keys[e.key] = false;
+            if (this.keys.hasOwnProperty(e.key)) {
+                this.keys[e.key] = false;
+                
+                // Handle baby pickup/place on key up
+                if (e.key === ' ' && !this.parent.isHoldingBaby) {
+                    this.pickupBaby();
+                } else if (e.key === ' ' && this.parent.isHoldingBaby) {
+                    this.placeBaby();
+                }
+            }
         });
         
         window.addEventListener('resize', () => {
@@ -1419,6 +1427,49 @@ class Game {
         debugPanel.className = 'fixed bottom-2.5 right-2.5 bg-black/80 text-white p-2.5 rounded font-mono z-50';
         debugPanel.id = 'debugPanel';
         document.body.appendChild(debugPanel);
+    }
+
+    pickupBaby() {
+        // Check if we can pick up the baby
+        if (this.checkCollision(this.parent, this.baby) && !this.parent.isHoldingBaby) {
+            this.parent.isHoldingBaby = true;
+            this.baby.isSleeping = false;
+            this.baby.currentFurniture = null;
+            this.lastPickupTime = Date.now();
+            
+            // Hide pickup hint immediately
+            this.showPickupHint = false;
+            this.pickupHintOpacity = 0;
+            
+            // Clear any existing timeout
+            if (this.pickupHintTimeout) {
+                clearTimeout(this.pickupHintTimeout);
+            }
+        }
+    }
+
+    placeBaby() {
+        // Get the current furniture the baby is in or near
+        const nearbyFurniture = this.checkFurnitureCollision();
+        
+        // Define which furniture types can hold the baby
+        const interactableFurniture = ['bed', 'crib', 'sofa'];
+        
+        // Check if we can place the baby
+        if (this.parent.isHoldingBaby && nearbyFurniture && interactableFurniture.includes(nearbyFurniture.type)) {
+            this.placeBabyInFurniture(nearbyFurniture);
+            this.parent.isHoldingBaby = false;
+            this.lastPlaceTime = Date.now();
+            
+            // Hide control hint immediately
+            this.showControlHint = false;
+            this.controlHintOpacity = 0;
+            
+            // Clear any existing timeout
+            if (this.controlHintTimeout) {
+                clearTimeout(this.controlHintTimeout);
+            }
+        }
     }
 }
 
