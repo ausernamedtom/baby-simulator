@@ -787,18 +787,25 @@ class Game {
             }
         }
         
-        // Parent movement
-        if (this.keys['ArrowLeft'] || this.keys['a']) {
-            this.parent.x = Math.max(0, this.parent.x - this.parent.speed);
+        // Handle movement with both keyboard and touch controls
+        if (this.keys['ArrowLeft'] || this.keys['a'] || window.touchControls?.left) {
+            this.parent.x -= this.parent.speed;
         }
-        if (this.keys['ArrowRight'] || this.keys['d']) {
-            this.parent.x = Math.min(this.canvas.width - this.parent.width, this.parent.x + this.parent.speed);
+        if (this.keys['ArrowRight'] || this.keys['d'] || window.touchControls?.right) {
+            this.parent.x += this.parent.speed;
         }
-        if (this.keys['ArrowUp'] || this.keys['w']) {
-            this.parent.y = Math.max(0, this.parent.y - this.parent.speed);
+        if (this.keys['ArrowUp'] || this.keys['w'] || window.touchControls?.up) {
+            this.parent.y -= this.parent.speed;
         }
-        if (this.keys['ArrowDown'] || this.keys['s']) {
-            this.parent.y = Math.min(this.canvas.height - this.parent.height, this.parent.y + this.parent.speed);
+        if (this.keys['ArrowDown'] || this.keys['s'] || window.touchControls?.down) {
+            this.parent.y += this.parent.speed;
+        }
+
+        // Handle baby pickup/place with both keyboard and touch controls
+        if ((this.keys[' '] || window.touchControls?.action) && !this.parent.isHoldingBaby) {
+            this.pickupBaby();
+        } else if ((this.keys[' '] || window.touchControls?.action) && this.parent.isHoldingBaby) {
+            this.placeBaby();
         }
 
         // Check for collision with baby
@@ -1423,4 +1430,13 @@ window.addEventListener('load', () => {
     
     // Initialize game with dev mode parameter
     new Game(devMode);
-}); 
+});
+
+// Make touch controls available globally
+window.touchControls = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    action: false
+}; 

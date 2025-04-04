@@ -206,6 +206,79 @@
             padding: 0 0.5rem;
             margin-left: 1rem;
         }
+
+        /* Touch Controls */
+        #touch-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 0.5rem;
+            width: 150px;
+            height: 150px;
+        }
+
+        .dpad-button {
+            background: rgba(255, 255, 255, 0.7);
+            border: 2px solid #4a90e2;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #4a90e2;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: background-color 0.2s;
+        }
+
+        .dpad-button:active {
+            background: rgba(74, 144, 226, 0.3);
+        }
+
+        #up { grid-column: 2; grid-row: 1; }
+        #left { grid-column: 1; grid-row: 2; }
+        #right { grid-column: 3; grid-row: 2; }
+        #down { grid-column: 2; grid-row: 3; }
+
+        #action-button {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 2px solid #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #4CAF50;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: background-color 0.2s;
+            margin-right: 1rem;
+        }
+
+        #action-button:active {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        /* Hide touch controls on desktop */
+        @media (hover: hover) {
+            #touch-controls {
+                display: none;
+            }
+        }
     </style>
     <script>
         // Register service worker
@@ -253,6 +326,47 @@
             installBanner.classList.remove('visible');
             deferredPrompt = null;
         });
+
+        // Touch controls functionality
+        const touchControls = {
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            action: false
+        };
+
+        function setupTouchControls() {
+            const dpadButtons = document.querySelectorAll('.dpad-button');
+            const actionButton = document.getElementById('action-button');
+
+            dpadButtons.forEach(button => {
+                button.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    touchControls[button.id] = true;
+                });
+
+                button.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    touchControls[button.id] = false;
+                });
+            });
+
+            actionButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchControls.action = true;
+            });
+
+            actionButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                touchControls.action = false;
+            });
+        }
+
+        // Initialize touch controls when the game starts
+        window.addEventListener('load', () => {
+            setupTouchControls();
+        });
     </script>
 </head>
 <body>
@@ -277,6 +391,15 @@
         </div>
         <button id="install-button" class="install-button">Install</button>
         <button id="close-banner" class="close-button">&times;</button>
+    </div>
+    <div id="touch-controls">
+        <div id="dpad">
+            <div id="up" class="dpad-button">↑</div>
+            <div id="left" class="dpad-button">←</div>
+            <div id="right" class="dpad-button">→</div>
+            <div id="down" class="dpad-button">↓</div>
+        </div>
+        <div id="action-button">E</div>
     </div>
     <script src="game.js"></script>
 </body>
