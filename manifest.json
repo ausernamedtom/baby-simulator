@@ -9,14 +9,92 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icons/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "windows11/Square44x44Logo.scale-100.png",
+      "sizes": "44x44",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "windows11/Square44x44Logo.scale-125.png",
+      "sizes": "55x55",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square44x44Logo.scale-150.png",
+      "sizes": "66x66",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square44x44Logo.scale-200.png",
+      "sizes": "88x88",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square44x44Logo.scale-400.png",
+      "sizes": "176x176",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square150x150Logo.scale-100.png",
+      "sizes": "150x150",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square150x150Logo.scale-125.png",
+      "sizes": "188x188",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square150x150Logo.scale-150.png",
+      "sizes": "225x225",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square150x150Logo.scale-200.png",
+      "sizes": "300x300",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/Square150x150Logo.scale-400.png",
+      "sizes": "600x600",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/LargeTile.scale-100.png",
+      "sizes": "310x310",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/LargeTile.scale-125.png",
+      "sizes": "388x388",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/LargeTile.scale-150.png",
+      "sizes": "465x465",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/LargeTile.scale-200.png",
+      "sizes": "620x620",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "windows11/LargeTile.scale-400.png",
+      "sizes": "1240x1240",
       "type": "image/png",
       "purpose": "any maskable"
     }

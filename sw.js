@@ -7,21 +7,45 @@ const ASSETS_TO_CACHE = [
   '/images/landscape.png',
   '/images/portrait.png',
   '/manifest.json',
-  '/icons/icon-72x72.png',
-  '/icons/icon-96x96.png',
-  '/icons/icon-128x128.png',
-  '/icons/icon-144x144.png',
-  '/icons/icon-152x152.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-384x384.png',
-  '/icons/icon-512x512.png'
+  '/windows11/Square44x44Logo.scale-100.png',
+  '/windows11/Square44x44Logo.scale-125.png',
+  '/windows11/Square44x44Logo.scale-150.png',
+  '/windows11/Square44x44Logo.scale-200.png',
+  '/windows11/Square44x44Logo.scale-400.png',
+  '/windows11/Square150x150Logo.scale-100.png',
+  '/windows11/Square150x150Logo.scale-125.png',
+  '/windows11/Square150x150Logo.scale-150.png',
+  '/windows11/Square150x150Logo.scale-200.png',
+  '/windows11/Square150x150Logo.scale-400.png',
+  '/windows11/LargeTile.scale-100.png',
+  '/windows11/LargeTile.scale-125.png',
+  '/windows11/LargeTile.scale-150.png',
+  '/windows11/LargeTile.scale-200.png',
+  '/windows11/LargeTile.scale-400.png'
 ];
 
 // Install event - cache assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS_TO_CACHE))
+      .then((cache) => {
+        return Promise.all(
+          ASSETS_TO_CACHE.map((url) => {
+            return fetch(url)
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+                }
+                return cache.put(url, response);
+              })
+              .catch((error) => {
+                console.error(`Failed to cache ${url}:`, error);
+                // Continue with other assets even if one fails
+                return Promise.resolve();
+              });
+          })
+        );
+      })
   );
 });
 
@@ -56,9 +80,23 @@ self.addEventListener('fetch', (event) => {
               caches.open(CACHE_NAME)
                 .then((cache) => {
                   cache.put(event.request, responseToCache);
+                })
+                .catch((error) => {
+                  console.error('Failed to cache response:', error);
                 });
             }
             return response;
+          })
+          .catch((error) => {
+            console.error('Fetch failed:', error);
+            // Return a fallback response if needed
+            return new Response('Offline', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: new Headers({
+                'Content-Type': 'text/plain'
+              })
+            });
           });
       })
   );
