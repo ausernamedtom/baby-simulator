@@ -4,22 +4,42 @@
   "description": "A 2D web game",
   "main": "game.js",
   "scripts": {
-    "build": "npm run build:css && npm run minify",
+    "clean": "rimraf dist/*",
+    "prebuild": "npm run clean",
+    "build": "npm run build:css && npm run minify && npm run copy-assets",
     "build:css": "tailwindcss -i ./src/input.css -o ./style.css",
-    "minify": "minify game.js -o game.min.js && minify style.css -o style.min.css",
+    "minify": "minify game.js -o dist/game.min.js && minify style.css -o dist/style.min.css",
+    "copy-assets": "copyfiles -f index.html manifest.json sw.js dist/ && copyfiles -f game.js style.css dist/",
     "start": "docker-compose up -d",
     "stop": "docker-compose down",
     "dev": "tailwindcss -i ./src/input.css -o ./style.css --watch",
     "generate-icons": "node generate-icons.js"
   },
   "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
     "minify": "^7.1.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.14",
+    "copyfiles": "^2.4.1",
     "minify-cli": "^1.0.0",
     "postcss": "^8.4.24",
-    "tailwindcss": "^3.3.2",
-    "sharp": "^0.32.1"
-  }
-} 
+    "rimraf": "^5.0.10",
+    "sharp": "^0.32.1",
+    "tailwindcss": "^3.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ausernamedtom/baby-simulator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ausernamedtom/baby-simulator/issues"
+  },
+  "homepage": "https://github.com/ausernamedtom/baby-simulator#readme"
+}

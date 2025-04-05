@@ -1,0 +1,11 @@
+{
+  "appId": "dev.tomhofman.babysimulator",
+  "appName": "Baby Simulator",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
