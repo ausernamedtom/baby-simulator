@@ -798,22 +798,28 @@ class Game {
         // Handle movement with both keyboard and touch controls
         if (this.keys['ArrowLeft'] || this.keys['a'] || window.touchControls?.left) {
             this.parent.x -= this.parent.speed;
+            console.log('Moving left', window.touchControls?.left); // Debug log
         }
         if (this.keys['ArrowRight'] || this.keys['d'] || window.touchControls?.right) {
             this.parent.x += this.parent.speed;
+            console.log('Moving right', window.touchControls?.right); // Debug log
         }
         if (this.keys['ArrowUp'] || this.keys['w'] || window.touchControls?.up) {
             this.parent.y -= this.parent.speed;
+            console.log('Moving up', window.touchControls?.up); // Debug log
         }
         if (this.keys['ArrowDown'] || this.keys['s'] || window.touchControls?.down) {
             this.parent.y += this.parent.speed;
+            console.log('Moving down', window.touchControls?.down); // Debug log
         }
 
         // Handle baby pickup/place with both keyboard and touch controls
-        if ((this.keys[' '] || window.touchControls?.action) && !this.parent.isHoldingBaby) {
+        if (window.touchControls?.action && !this.parent.isHoldingBaby) {
             this.pickupBaby();
-        } else if ((this.keys[' '] || window.touchControls?.action) && this.parent.isHoldingBaby) {
+            console.log('Picking up baby'); // Debug log
+        } else if (window.touchControls?.action && this.parent.isHoldingBaby) {
             this.placeBaby();
+            console.log('Placing baby'); // Debug log
         }
 
         // Check for collision with baby
@@ -1481,13 +1487,4 @@ window.addEventListener('load', () => {
     
     // Initialize game with dev mode parameter
     new Game(devMode);
-});
-
-// Make touch controls available globally
-window.touchControls = {
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-    action: false
-}; 
+}); 

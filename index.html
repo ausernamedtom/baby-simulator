@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="BabySim">
+    <link rel="icon" href="data:,">
     <title>Baby Simulator</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
@@ -31,6 +32,19 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            overflow: hidden;
+        }
+
+        canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
 
         /* Portrait mode */
@@ -38,12 +52,22 @@
             #game-container {
                 background-image: url('images/portrait.png');
             }
+            
+            canvas {
+                width: auto;
+                height: 100%;
+            }
         }
 
         /* Landscape mode */
         @media (aspect-ratio >= 1) {
             #game-container {
                 background-image: url('images/landscape.png');
+            }
+            
+            canvas {
+                width: 100%;
+                height: auto;
             }
         }
 
@@ -125,14 +149,6 @@
 
         #stopButton:hover {
             background-color: #d32f2f;
-        }
-
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
         }
 
         canvas.hidden {
@@ -218,6 +234,7 @@
             padding: 1rem;
             z-index: 100;
             pointer-events: none;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
         }
 
         #dpad {
@@ -225,26 +242,31 @@
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
             gap: 0.5rem;
-            width: 150px;
-            height: 150px;
+            width: 180px;
+            height: 180px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+            padding: 0.5rem;
         }
 
         .dpad-button {
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.8);
             border: 2px solid #4a90e2;
             border-radius: 0.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 2rem;
             color: #4a90e2;
             cursor: pointer;
             pointer-events: auto;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .dpad-button:active {
             background: rgba(74, 144, 226, 0.3);
+            transform: scale(0.95);
         }
 
         #up { grid-column: 2; grid-row: 1; }
@@ -253,30 +275,39 @@
         #down { grid-column: 2; grid-row: 3; }
 
         #action-button {
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.7);
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.8);
             border: 2px solid #4CAF50;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 2rem;
             color: #4CAF50;
             cursor: pointer;
             pointer-events: auto;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
             margin-right: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         #action-button:active {
             background: rgba(76, 175, 80, 0.3);
+            transform: scale(0.95);
         }
 
         /* Hide touch controls on desktop */
         @media (hover: hover) {
             #touch-controls {
                 display: none;
+            }
+        }
+
+        /* Show touch controls only on mobile */
+        @media (max-width: 768px) {
+            #touch-controls {
+                display: flex;
             }
         }
     </style>
@@ -286,49 +317,16 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then(registration => {
-                        console.log('ServiceWorker registration successful');
+                        // ServiceWorker registration successful
                     })
                     .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
+                        // ServiceWorker registration failed
                     });
             });
         }
 
-        // Install banner functionality
-        let deferredPrompt;
-        const installBanner = document.getElementById('install-banner');
-        const installButton = document.getElementById('install-button');
-        const closeButton = document.getElementById('close-banner');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBanner.classList.add('visible');
-        });
-
-        installButton.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    console.log('User accepted the install prompt');
-                }
-                deferredPrompt = null;
-                installBanner.classList.remove('visible');
-            }
-        });
-
-        closeButton.addEventListener('click', () => {
-            installBanner.classList.remove('visible');
-        });
-
-        window.addEventListener('appinstalled', () => {
-            installBanner.classList.remove('visible');
-            deferredPrompt = null;
-        });
-
-        // Touch controls functionality
-        const touchControls = {
+        // Initialize touch controls
+        window.touchControls = {
             up: false,
             down: false,
             left: false,
@@ -340,32 +338,116 @@
             const dpadButtons = document.querySelectorAll('.dpad-button');
             const actionButton = document.getElementById('action-button');
 
+            if (!dpadButtons.length || !actionButton) {
+                return;
+            }
+
             dpadButtons.forEach(button => {
-                button.addEventListener('touchstart', (e) => {
+                if (button) {
+                    button.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        window.touchControls[button.id] = true;
+                    });
+
+                    button.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        window.touchControls[button.id] = false;
+                    });
+
+                    // Add mouse events for testing on desktop
+                    button.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        window.touchControls[button.id] = true;
+                    });
+
+                    button.addEventListener('mouseup', (e) => {
+                        e.preventDefault();
+                        window.touchControls[button.id] = false;
+                    });
+
+                    button.addEventListener('mouseleave', (e) => {
+                        e.preventDefault();
+                        window.touchControls[button.id] = false;
+                    });
+                }
+            });
+
+            if (actionButton) {
+                actionButton.addEventListener('touchstart', (e) => {
                     e.preventDefault();
-                    touchControls[button.id] = true;
+                    window.touchControls.action = true;
                 });
 
-                button.addEventListener('touchend', (e) => {
+                actionButton.addEventListener('touchend', (e) => {
                     e.preventDefault();
-                    touchControls[button.id] = false;
+                    window.touchControls.action = false;
                 });
-            });
 
-            actionButton.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                touchControls.action = true;
-            });
+                // Add mouse events for testing on desktop
+                actionButton.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    window.touchControls.action = true;
+                });
 
-            actionButton.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                touchControls.action = false;
-            });
+                actionButton.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    window.touchControls.action = false;
+                });
+
+                actionButton.addEventListener('mouseleave', (e) => {
+                    e.preventDefault();
+                    window.touchControls.action = false;
+                });
+            }
         }
 
-        // Initialize touch controls when the game starts
-        window.addEventListener('load', () => {
+        // Initialize everything when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup install banner
+            const installBanner = document.getElementById('install-banner');
+            const installButton = document.getElementById('install-button');
+            const closeButton = document.getElementById('close-banner');
+
+            if (installBanner && installButton && closeButton) {
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            // User accepted the install prompt
+                        }
+                        deferredPrompt = null;
+                        installBanner.classList.remove('visible');
+                    }
+                });
+
+                closeButton.addEventListener('click', () => {
+                    installBanner.classList.remove('visible');
+                });
+            }
+
+            // Setup touch controls
             setupTouchControls();
+        });
+
+        // Handle beforeinstallprompt event
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBanner = document.getElementById('install-banner');
+            if (installBanner) {
+                installBanner.classList.add('visible');
+            }
+        });
+
+        // Handle appinstalled event
+        window.addEventListener('appinstalled', () => {
+            const installBanner = document.getElementById('install-banner');
+            if (installBanner) {
+                installBanner.classList.remove('visible');
+            }
+            deferredPrompt = null;
         });
     </script>
 </head>
@@ -385,7 +467,7 @@
         <canvas id="gameCanvas" class="hidden"></canvas>
     </div>
     <div id="install-banner">
-        <img src="/icons/icon-72x72.png" alt="Baby Simulator" class="app-icon">
+        <img src="/icons/icon-192x192.png" alt="Baby Simulator" class="app-icon">
         <div class="banner-content">
             <h3 class="banner-title">Install Baby Simulator</h3>
             <p class="banner-text">Get the full experience by installing the app on your device</p>
